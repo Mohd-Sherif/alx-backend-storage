@@ -57,6 +57,24 @@ def call_history(method: Callable) -> Callable:
 
     return wrapper
 
+def replay(method: Callable):
+    """
+    Display the history of calls of a particular function.
+    """
+    # Get the qualified name of the method
+    inputs_key = f"{method.__qualname__}:inputs"
+    outputs_key = f"{method.__qualname__}:outputs"
+
+    # Retrieve inputs and outputs from Redis
+    inputs = method.__self__._redis.lrange(inputs_key, 0, -1)
+    outputs = method.__self__._redis.lrange(outputs_key, 0, -1)
+
+    # Print the call history
+    print(f"{method.__qualname__} was called {len(inputs)} times:")
+    for input_val, output_val in zip(inputs, outputs):
+        print(f"{method.__qualname__}(*{input_val.decode('utf-8')}) \
+-> {output_val.decode('utf-8')}")
+
 class Cache:
     def __init__(self):
         """
@@ -103,21 +121,3 @@ class Cache:
         Automatically convert the retrieved data to an integer.
         """
         return self.get(key, fn=int)
-
-if __name__ == "__main__":
-    cache = Cache()
-
-    # Store values and print their UUIDs
-    s1 = cache.store("first")
-    print(s1)
-    s2 = cache.store("secont")
-    print(s2)
-    s3 = cache.store("third")
-    print(s3)
-
-    # Retrieve the inputs and outputs history for the store method
-    inputs = cache._redis.lrange(f"{cache.store.__qualname__}:inputs", 0, -1)
-    outputs = cache._redis.lrange(f"{cache.store.__qualname__}:outputs", 0, -1)
-
-    print("inputs: {}".format(inputs))
-    print("outputs: {}".format(outputs))
